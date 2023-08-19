@@ -1,10 +1,5 @@
 use leptos::*;
 
-// Composing different components together is how we build
-// user interfaces. Here, we'll define a resuable <ProgressBar/>.
-// You'll see how doc comments can be used to document components
-// and their properties.
-
 /// Shows progress toward a goal.
 #[component]
 fn ProgressBar(
@@ -33,7 +28,7 @@ fn ProgressBar(
 }
 
 #[component]
-fn App(cx: Scope) -> impl IntoView {
+fn AppOne(cx: Scope) -> impl IntoView {
     let (count, set_count) = create_signal(cx, 0);
     let double_count = move || count.get() * 2;
 
@@ -47,16 +42,109 @@ fn App(cx: Scope) -> impl IntoView {
             "Click me"
         </button>
         <br/>
-        // If you have this open in CodeSandbox or an editor with
-        // rust-analyzer support, try hovering over `ProgressBar`,
-        // `max`, or `progress` to see the docs we defined above
         <ProgressBar max=50 progress=count/>
-        // Let's use the default max value on this one
-        // the default is 100, so it should move half as fast
         <ProgressBar progress=count/>
-        // Signal::derive creates a Signal wrapper from our derived signal
-        // using double_count means it should move twice as fast
         <ProgressBar max=50 progress=Signal::derive(cx, double_count)/>
+    }
+}
+
+/// A list of counters, without the ability
+/// to add or remove any.
+#[component]
+fn StaticList(
+    cx: Scope,
+    /// How many counters to include in this list.
+    length: usize,
+) -> impl IntoView {
+    let counters = (1..=length).map(|idx| create_signal(cx, idx));
+
+    let counter_buttons = counters
+        .map(|(count, set_count)| {
+            view! { cx,
+                <li>
+                    <button
+                        on:click=move |_| set_count.update(|n| *n += 1)
+                    >
+                        {count}
+                    </button>
+                </li>
+            }
+        })
+        .collect::<Vec<_>>();
+
+    view! { cx,
+        <ul>{counter_buttons}</ul>
+    }
+}
+
+/// A list of counters that allows you to add or
+/// remove counters.
+#[component]
+fn DynamicList(
+    cx: Scope,
+    /// The number of counters to begin with.
+    initial_length: usize,
+) -> impl IntoView {
+    let mut next_counter_id = initial_length;
+
+    let initial_counters = (0..initial_length)
+        .map(|id| (id, create_signal(cx, id + 1)))
+        .collect::<Vec<_>>();
+
+    let (counters, set_counters) = create_signal(cx, initial_counters);
+
+    let add_counter = move |_| {
+        let sig = create_signal(cx, next_counter_id + 1);
+        set_counters.update(move |counters| counters.push((next_counter_id, sig)));
+        // increment the ID so it's always unique
+        next_counter_id += 1;
+    };
+
+    view! { cx,
+        <div>
+            <button on:click=add_counter>
+                "Add Counter"
+            </button>
+            <ul>
+                <For
+                    each=move || counters.get()
+                    key=|counter| counter.0
+                    view=move |cx, (id, (count, set_count))| {
+                        view! { cx,
+                            <li>
+                                <button
+                                    on:click=move |_| set_count.update(|n| *n += 1)
+                                >
+                                    {count}
+                                </button>
+                                <button
+                                    on:click=move |_| {
+                                        set_counters.update(|counters| {
+                                            counters.retain(|(counter_id, _)| counter_id != &id)
+                                        });
+                                    }
+                                >
+                                    "Remove"
+                                </button>
+                            </li>
+                        }
+                    }
+                />
+            </ul>
+        </div>
+    }
+}
+
+#[component]
+fn App(cx: Scope) -> impl IntoView {
+    view! { cx,
+        <h1>"Iteration"</h1>
+        <h2>"Static List"</h2>
+        <p>"Use this pattern if the list itself is static."</p>
+        <StaticList length=5/>
+        <h2>"Dynamic List"</h2>
+        <p>"Use this pattern if the rows in your list will change."</p>
+        <DynamicList initial_length=5/>
     }
 }
 
