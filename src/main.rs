@@ -1,58 +1,65 @@
 use leptos::*;
 
-// The #[component] macro marks a function as a reusable component
-// Components are the building blocks of your user interface
-// They define a reusable unit of behavior
+// Composing different components together is how we build
+// user interfaces. Here, we'll define a resuable <ProgressBar/>.
+// You'll see how doc comments can be used to document components
+// and their properties.
+
+/// Shows progress toward a goal.
 #[component]
-fn App(cx: Scope) -> impl IntoView {
-    // here we create a reactive signal
-    // and get a (getter, setter) pair
-    // signals are the basic unit of change in the framework
-    // we'll talk more about them later
-    let (count, set_count) = create_signal(cx, 0);
-
-    // the `view` macro is how we define the user interface
-    // it uses an HTML-like format that can accept certain Rust values
+fn ProgressBar(
+    // All components take a reactive `Scope` as the first argument
+    cx: Scope,
+    // Marks this as an optional prop. It will default to the default
+    // value of its type, i.e., 0.
+    #[prop(default = 100)]
+    /// The maximum value of the progress bar.
+    max: u16,
+    // Will run `.into()` on the value passed into the prop.
+    #[prop(into)]
+    // `Signal<T>` is a wrapper for several reactive types.
+    // It can be helpful in component APIs like this, where we
+    // might want to take any kind of reactive value
+    /// How much progress should be displayed.
+    progress: Signal<i32>,
+) -> impl IntoView {
     view! { cx,
-        <button
-            // on:click will run whenever the `click` event fires
-            // every event handler is defined as `on:{eventname}`
-
-            // we're able to move `set_count` into the closure
-            // because signals are Copy and 'static
-            on:click=move |_| {
-                set_count.update(|n| *n += 1);
-            }
-        >
-            // text nodes in RSX should be wrapped in quotes,
-            // like a normal Rust string
-            "Click me"
-        </button>
-        <p>
-            <strong>"Reactive: "</strong>
-            // you can insert Rust expressions as values in the DOM
-            // by wrapping them in curly braces
-            // if you pass in a function, it will reactively update
-            {move || count.get()}
-        </p>
-        <p>
-            <strong>"Reactive shorthand: "</strong>
-            // signals are functions, so we can remove the wrapping closure
-            {count}
-        </p>
-        <p>
-            <strong>"Not reactive: "</strong>
-            // NOTE: if you write {count()}, this will *not* be reactive
-            // it simply gets the value of count once
-            // {count()}
-        </p>
+        <progress
+            max={max}
+            value={move || progress.get()}
+        />
+        <br/>
     }
 }
 
-// This `main` function is the entry point into the app
-// It just mounts our component to the <body>
-// Because we defined it as `fn App`, we can now use it in a
-// template as <App/>
+#[component]
+fn App(cx: Scope) -> impl IntoView {
+    let (count, set_count) = create_signal(cx, 0);
+    let double_count = move || count.get() * 2;
+
+    view! { cx,
+        <button
+            on:click=move |_| {
+                set_count.update(|n| *n += 1);
+            }
+            class:red = move || count.get() % 2 == 1
+        >
+            "Click me"
+        </button>
+        <br/>
+        // If you have this open in CodeSandbox or an editor with
+        // rust-analyzer support, try hovering over `ProgressBar`,
+        // `max`, or `progress` to see the docs we defined above
+        <ProgressBar max=50 progress=count/>
+        // Let's use the default max value on this one
+        // the default is 100, so it should move half as fast
+        <ProgressBar progress=count/>
+        // Signal::derive creates a Signal wrapper from our derived signal
+        // using double_count means it should move twice as fast
+        <ProgressBar max=50 progress=Signal::derive(cx, double_count)/>
+    }
+}
+
 fn main() {
     leptos::mount_to_body(|cx| view! { cx, <App/> })
 }
