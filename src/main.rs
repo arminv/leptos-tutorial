@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::{ev::SubmitEvent, html::Input, *};
 
 /// Shows progress toward a goal.
 #[component]
@@ -136,7 +136,7 @@ fn DynamicList(
 }
 
 #[component]
-fn App(cx: Scope) -> impl IntoView {
+fn AppTwo(cx: Scope) -> impl IntoView {
     view! { cx,
         <h1>"Iteration"</h1>
         <h2>"Static List"</h2>
@@ -145,6 +145,43 @@ fn App(cx: Scope) -> impl IntoView {
         <h2>"Dynamic List"</h2>
         <p>"Use this pattern if the rows in your list will change."</p>
         <DynamicList initial_length=5/>
+    }
+}
+
+#[component]
+fn App(cx: Scope) -> impl IntoView {
+    let (name, set_name) = create_signal(cx, "Controlled".to_string());
+
+    let (name_two, set_name_two) = create_signal(cx, "Uncontrolled".to_string());
+
+    let input_element: NodeRef<Input> = create_node_ref(cx);
+
+    let on_submit = move |ev: SubmitEvent| {
+        ev.prevent_default();
+
+        let value = input_element.get().expect("<input> to exist").value();
+
+        set_name_two.set(value);
+    };
+
+    view! {cx,
+    <input
+    type="text"
+    on:input=move |ev| {
+        set_name.set(event_target_value(&ev));
+    }
+    prop:value=name.get()
+    />
+    <p>"Name is:" {name}</p>
+
+    <form on:submit=on_submit>
+    <input type="text"
+    value=name_two.get()
+    node_ref=input_element
+    />
+    <input type="submit" value="Submit"/>
+    </form>
+    <p>"Name Two is:" {name_two}</p>
     }
 }
 
