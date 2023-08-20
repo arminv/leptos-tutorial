@@ -149,13 +149,15 @@ fn AppTwo(cx: Scope) -> impl IntoView {
 }
 
 #[component]
-fn App(cx: Scope) -> impl IntoView {
+fn AppThree(cx: Scope) -> impl IntoView {
     let (name, set_name) = create_signal(cx, "Controlled".to_string());
-
     let (name_two, set_name_two) = create_signal(cx, "Uncontrolled".to_string());
 
     let input_element: NodeRef<Input> = create_node_ref(cx);
 
+    let on_input_handler = move |ev| {
+        set_name.set(event_target_value(&ev));
+    };
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
 
@@ -167,9 +169,7 @@ fn App(cx: Scope) -> impl IntoView {
     view! {cx,
     <input
     type="text"
-    on:input=move |ev| {
-        set_name.set(event_target_value(&ev));
-    }
+    on:input=on_input_handler
     prop:value=name.get()
     />
     <p>"Name is:" {name}</p>
@@ -182,6 +182,58 @@ fn App(cx: Scope) -> impl IntoView {
     <input type="submit" value="Submit"/>
     </form>
     <p>"Name Two is:" {name_two}</p>
+    }
+}
+
+#[component]
+fn App(cx: Scope) -> impl IntoView {
+    let (value, set_value) = create_signal(cx, 0);
+
+    let is_odd = move || value.get() & 1 == 1;
+    let odd_text = move || if is_odd() { Some("How odd!") } else { None };
+
+    view! { cx,
+        <h1>"Control Flow"</h1>
+
+        <button on:click=move |_| set_value.update(|n| *n += 1)>
+            "+1"
+        </button>
+        <p>"Value is: " {value}</p>
+        <hr/>
+        <h2><code>"Option<T>"</code></h2>
+        <p>{odd_text}</p>
+        <p>{move || odd_text().map(|text| text.len())}</p>
+
+        <h2>"Conditional Logic"</h2>
+
+        <p>
+            {move || if is_odd() {
+                "Odd"
+            } else {
+                "Even"
+            }}
+        </p>
+
+        <p class:hidden=is_odd>"Appears if even."</p>
+
+        <Show when=is_odd
+            fallback=|cx| view! { cx, <p>"Even steven"</p> }
+        >
+            <p>"Oddment"</p>
+        </Show>
+
+        {move || is_odd().then(|| view! { cx, <p>"Oddity!"</p> })}
+
+        <h2>"Converting between Types"</h2>
+        {move || match is_odd() {
+            true if value.get() == 1 => {
+                view! { cx, <pre>"One"</pre> }.into_any()
+            },
+            false if value.get() == 2 => {
+                view! { cx, <p>"Two"</p> }.into_any()
+            }
+            _ => view! { cx, <textarea>{value.get()}</textarea> }.into_any()
+        }}
     }
 }
 
